@@ -701,6 +701,17 @@ contract Q101AirdropVesting is
         require(token.transfer(owner(), amount), "Transfer failed");
     }
 
+    /**
+     * @notice Emergency withdraw all token balance (only owner - Gnosis Safe)
+     * @dev Withdraws entire token balance held by this contract to the owner
+     */
+    function emergencyWithdrawAll() external onlyOwner {
+        uint256 balance = token.balanceOf(address(this));
+        require(balance > 0, "No balance to withdraw");
+        emit EmergencyWithdrawn(owner(), balance);
+        require(token.transfer(owner(), balance), "Transfer failed");
+    }
+
     // ============ Internal Functions ============
 
     /**
