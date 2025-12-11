@@ -1,0 +1,68 @@
+# Compiler files
+cache/
+out/
+
+# Ignores development broadcast logs
+!/broadcast
+/broadcast/*/31337/
+/broadcast/**/dry-run/
+
+# Dotenv file
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Coverage reports
+coverage/
+coverage.json
+lcov.info
+
+# Typechain
+typechain/
+typechain-types/
+
+# Hardhat (if mixed with Foundry)
+artifacts/
+cache_hardhat/
+
+# Build artifacts
+*.so
+*.a
+*.o
+*.dll
+*.dylib
+
+# Test artifacts
+.gas-snapshot
+
+# Backup and temporary development files
+*.backup
+*.backup2
+*.bak
+*.bak2
+*.bak3
+*.new
+*.new2
+*.patch
+*_patch.txt
+*_old.*
