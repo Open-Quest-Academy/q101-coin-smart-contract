@@ -24,6 +24,9 @@ contract Q101AirdropVestingV32Test is Test {
     bytes32 public merkleRoot;
     uint64 public startTime;
 
+    // Events
+    event MerkleRootUpdated(bytes32 indexed oldRoot, bytes32 indexed newRoot);
+
     // Test configuration
     uint256 constant VESTING_DURATION = 30 * 30 days; // 30 months
     uint256 constant CLIFF_DURATION = 6 * 30 days;    // 6 months
@@ -436,6 +439,153 @@ contract Q101AirdropVestingV32Test is Test {
         vm.expectRevert();
         vm.prank(user1);
         vesting.updateWithdrawRestrictions(15 days, 50 * 10**18);
+    }
+
+    // ============ Update Merkle Root Tests ============
+
+    function testUpdateMerkleRoot() public {
+        // First configure airdrop
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            VESTING_DURATION,
+            CLIFF_DURATION,
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_SECOND,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+
+        // Verify initial merkle root
+        assertEq(vesting.merkleRoot(), merkleRoot);
+
+        // Generate new merkle root (simulating adding new users)
+        bytes32 newMerkleRoot = bytes32(uint256(0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890));
+
+        // Update merkle root
+        vm.expectEmit(true, true, false, true);
+        emit MerkleRootUpdated(merkleRoot, newMerkleRoot);
+
+        vm.prank(owner);
+        vesting.updateMerkleRoot(newMerkleRoot);
+
+        // Verify updated
+        assertEq(vesting.merkleRoot(), newMerkleRoot);
+    }
+
+    function testUpdateMerkleRootOnlyOwner() public {
+        // Configure first
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            VESTING_DURATION,
+            CLIFF_DURATION,
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_SECOND,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+
+        bytes32 newMerkleRoot = bytes32(uint256(0xabcdef));
+
+        // Try to update as non-owner (should fail)
+        vm.expectRevert();
+        vm.prank(user1);
+        vesting.updateMerkleRoot(newMerkleRoot);
+    }
+
+    function testCannotUpdateMerkleRootBeforeConfiguration() public {
+        // Try to update before configureAirdrop is called
+        bytes32 newMerkleRoot = bytes32(uint256(0xabcdef));
+
+        vm.expectRevert("Must call configureAirdrop first");
+        vm.prank(owner);
+        vesting.updateMerkleRoot(newMerkleRoot);
+    }
+
+    function testCannotUpdateMerkleRootWithZeroValue() public {
+        // Configure first
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            VESTING_DURATION,
+            CLIFF_DURATION,
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_SECOND,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+
+        // Try to update with zero value (should fail)
+        vm.expectRevert("Invalid merkle root");
+        vm.prank(owner);
+        vesting.updateMerkleRoot(bytes32(0));
+    }
+
+    function testMerkleRootUpdatedEvent() public {
+        // Configure first
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            VESTING_DURATION,
+            CLIFF_DURATION,
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_SECOND,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+
+        bytes32 oldRoot = vesting.merkleRoot();
+        bytes32 newRoot = bytes32(uint256(0xabcdef));
+
+        // Expect the event
+        vm.expectEmit(true, true, false, true);
+        emit MerkleRootUpdated(oldRoot, newRoot);
+
+        vm.prank(owner);
+        vesting.updateMerkleRoot(newRoot);
+    }
+
+    function testMultipleUpdateMerkleRoot() public {
+        // Configure first
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            VESTING_DURATION,
+            CLIFF_DURATION,
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_SECOND,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+
+        // Update 1
+        bytes32 newRoot1 = bytes32(uint256(0xaaa));
+        vm.prank(owner);
+        vesting.updateMerkleRoot(newRoot1);
+        assertEq(vesting.merkleRoot(), newRoot1);
+
+        // Update 2
+        bytes32 newRoot2 = bytes32(uint256(0xbbb));
+        vm.prank(owner);
+        vesting.updateMerkleRoot(newRoot2);
+        assertEq(vesting.merkleRoot(), newRoot2);
+
+        // Update 3
+        bytes32 newRoot3 = bytes32(uint256(0xccc));
+        vm.prank(owner);
+        vesting.updateMerkleRoot(newRoot3);
+        assertEq(vesting.merkleRoot(), newRoot3);
     }
 
     // ============ Version Test ============

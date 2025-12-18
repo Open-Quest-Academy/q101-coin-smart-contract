@@ -143,6 +143,7 @@ contract Q101AirdropVesting is
     event EmergencyWithdrawn(address indexed owner, uint256 amount);
     event WithdrawRestrictionsUpdated(uint256 minInterval, uint256 minAmount);
     event RevealDelayUpdated(uint256 minDelay, uint256 maxDelay);
+    event MerkleRootUpdated(bytes32 indexed oldRoot, bytes32 indexed newRoot);
 
     /// @notice Emitted when airdrop is configured (includes all vesting parameters)
     event AirdropConfigured(
@@ -299,6 +300,22 @@ contract Q101AirdropVesting is
      */
     function isAirdropConfigured() external view returns (bool) {
         return merkleRoot != bytes32(0);
+    }
+
+    /**
+     * @notice Update Merkle Root with new users (can be called multiple times)
+     * @dev Only updates merkleRoot, all other vesting parameters remain unchanged
+     *      This function is used after initial configuration to add new users
+     * @param _merkleRoot New Merkle root (includes all users: existing + new)
+     */
+    function updateMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+        require(merkleRoot != bytes32(0), "Must call configureAirdrop first");
+        require(_merkleRoot != bytes32(0), "Invalid merkle root");
+
+        bytes32 oldRoot = merkleRoot;
+        merkleRoot = _merkleRoot;
+
+        emit MerkleRootUpdated(oldRoot, _merkleRoot);
     }
 
     /**
