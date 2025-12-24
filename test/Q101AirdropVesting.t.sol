@@ -231,6 +231,157 @@ contract Q101AirdropVestingV32Test is Test {
         assertEq(_minWithdrawAmount, MIN_WITHDRAW_AMOUNT);
     }
 
+    // ============ Vesting Duration Divisibility Tests ============
+
+    function testConfigureAirdropDivisibilityPerDay() public {
+        // Test: PER_DAY mode requires vesting duration to be multiple of 1 day
+        vm.expectRevert("Vesting duration must be multiple of 1 day for PER_DAY mode");
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            30 * 30 days + 12 hours,  // 30.5 months (not multiple of 1 day)
+            CLIFF_DURATION,
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_DAY,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+
+        // Test: Valid configuration (multiple of 1 day)
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            30 * 30 days,  // Exactly 30 months
+            CLIFF_DURATION,
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_DAY,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+        assertTrue(vesting.isAirdropConfigured());
+    }
+
+    function testConfigureAirdropDivisibilityPerMonth() public {
+        // Test: PER_MONTH mode requires vesting duration to be multiple of 30 days
+        vm.expectRevert("Vesting duration must be multiple of 30 days for PER_MONTH mode");
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            30 * 30 days + 15 days,  // 30.5 months (not multiple of 30 days)
+            CLIFF_DURATION,
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_MONTH,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+
+        // Test: Valid configuration (multiple of 30 days)
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            30 * 30 days,  // Exactly 30 months
+            CLIFF_DURATION,
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_MONTH,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+        assertTrue(vesting.isAirdropConfigured());
+    }
+
+    function testConfigureAirdropCliffDurationDivisibilityPerDay() public {
+        // Test: PER_DAY mode requires cliff duration to be multiple of 1 day
+        vm.expectRevert("Cliff duration must be multiple of 1 day for PER_DAY mode");
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            VESTING_DURATION,
+            6 * 30 days + 6 hours,  // 6.25 months cliff (not multiple of 1 day)
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_DAY,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+    }
+
+    function testConfigureAirdropCliffDurationDivisibilityPerMonth() public {
+        // Test: PER_MONTH mode requires cliff duration to be multiple of 30 days
+        vm.expectRevert("Cliff duration must be multiple of 30 days for PER_MONTH mode");
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            VESTING_DURATION,
+            6 * 30 days + 10 days,  // 6.33 months cliff (not multiple of 30 days)
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_MONTH,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+    }
+
+    function testConfigureAirdropPerSecondNoDivisibilityRequirement() public {
+        // Test: PER_SECOND mode accepts any duration (no divisibility requirement)
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            30 * 30 days + 12 hours + 37 minutes + 23 seconds,  // Arbitrary duration
+            6 * 30 days + 3 hours + 15 minutes,                 // Arbitrary cliff
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_SECOND,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+        assertTrue(vesting.isAirdropConfigured());
+    }
+
+    function testConfigureAirdropZeroCliffDuration() public {
+        // Test: Zero cliff duration is valid for all frequency modes (no cliff validation)
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            30 * 30 days,            // Valid: multiple of 30 days
+            0,                       // Zero cliff (no validation needed)
+            IMMEDIATE_RATIO,
+            0,                       // Zero cliff ratio
+            Q101AirdropVesting.VestingFrequency.PER_MONTH,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+        assertTrue(vesting.isAirdropConfigured());
+    }
+
+    function testConfigureAirdropInvalidVestingDurationWithZeroCliff() public {
+        // Test: Even with zero cliff, vesting duration must still be valid
+        vm.expectRevert("Vesting duration must be multiple of 30 days for PER_MONTH mode");
+        vm.prank(owner);
+        vesting.configureAirdrop(
+            startTime,
+            merkleRoot,
+            30 * 30 days + 15 days,  // Not multiple of 30 days
+            0,                       // Zero cliff (no validation needed)
+            IMMEDIATE_RATIO,
+            0,                       // Zero cliff ratio
+            Q101AirdropVesting.VestingFrequency.PER_MONTH,
+            MIN_WITHDRAW_INTERVAL,
+            MIN_WITHDRAW_AMOUNT
+        );
+    }
+
     // ============ Three-Stage Vesting Tests ============
 
     function testThreeStageReleaseCalculation() public {

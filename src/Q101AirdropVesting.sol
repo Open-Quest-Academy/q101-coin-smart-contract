@@ -501,7 +501,6 @@ contract Q101AirdropVesting is
      * @param amount Total allocation amount
      */
     function _createAndWithdrawImmediatelyReleasable(address user, uint256 amount) internal {
-        require(token.balanceOf(address(this)) >= amount, "Contract: Insufficient tokens");
 
         // Calculate immediate release amount (Stage 1)
         uint256 immediateAmount = (amount * immediateReleaseRatio) / RATIO_PRECISION;

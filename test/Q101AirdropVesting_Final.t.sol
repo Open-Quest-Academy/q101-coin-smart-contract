@@ -322,10 +322,14 @@ contract Q101AirdropVestingV32FinalTest is Test {
         assertEq(releasable, totalAmount - releasedAmount);
     }
 
-    // ============ Edge Case: Insufficient Token Balance ============
+    // ============ Edge Case: Insufficient Token Balance (Staged Deposit Model) ============
 
-    function testRevealRevertWhenInsufficientTokens() public {
-        // Deploy new vesting with insufficient tokens
+    function testWithdrawRevertWhenInsufficientContractBalance() public {
+        // Test the staged token deposit model:
+        // Reveal succeeds even with insufficient total balance,
+        // but withdraw will fail if contract balance is insufficient
+
+        // Deploy new vesting with only immediate release tokens
         Q101AirdropVesting vestingImpl2 = new Q101AirdropVesting(gelatoRelay);
         bytes memory vestingInitData = abi.encodeWithSelector(
             Q101AirdropVesting.initialize.selector,
@@ -337,9 +341,9 @@ contract Q101AirdropVestingV32FinalTest is Test {
         ERC1967Proxy vestingProxy2 = new ERC1967Proxy(address(vestingImpl2), vestingInitData);
         Q101AirdropVesting vesting2 = Q101AirdropVesting(address(vestingProxy2));
 
-        // Transfer only small amount
+        // Transfer only enough for immediate release (10% of AMOUNT = 100 tokens)
         vm.prank(owner);
-        token.transfer(address(vesting2), 100 * 10**18); // Less than AMOUNT
+        token.transfer(address(vesting2), 100 * 10**18);
 
         // Configure
         vm.prank(owner);
@@ -355,7 +359,7 @@ contract Q101AirdropVestingV32FinalTest is Test {
             100 * 10**18
         );
 
-        // Try to reveal with amount > balance
+        // Reveal should succeed (this is the staged deposit feature)
         bytes32 salt = keccak256(abi.encodePacked("SALT", user1));
         bytes32 commitHash = keccak256(abi.encode(VOUCHER_ID, user1, AMOUNT, salt));
 
@@ -365,9 +369,34 @@ contract Q101AirdropVestingV32FinalTest is Test {
 
         bytes32[] memory proof = new bytes32[](0);
 
-        vm.expectRevert("Contract: Insufficient tokens");
+        // Reveal succeeds - creates vesting schedule
         vm.prank(user1);
         vesting2.reveal(VOUCHER_ID, AMOUNT, salt, proof);
+
+        // Fast forward past cliff period
+        vm.warp(startTime + CLIFF_DURATION + 1);
+
+        // Now try to withdraw - should fail due to insufficient contract balance
+        // At this point, user should be able to withdraw cliff amount (20%)
+        // But contract balance is 0 (immediate 10% was already withdrawn during reveal)
+        // Expect ERC20 standard error (transfer will fail with insufficient balance)
+        vm.expectRevert(); // Will revert with "Transfer failed" due to ERC20 transfer failure
+        vm.prank(user1);
+        vesting2.withdraw();
+
+        // Admin deposits more tokens (simulating staged deposit)
+        vm.prank(owner);
+        token.transfer(address(vesting2), 500 * 10**18);
+
+        // Now withdraw should succeed
+        vm.prank(user1);
+        vesting2.withdraw();
+
+        // Verify withdraw succeeded
+        uint256 userBalance = token.balanceOf(user1);
+        // Should have immediate (100) + cliff (200) = 300 tokens
+        // Use approx check to account for 1 second of linear vesting (CLIFF_DURATION + 1)
+        assertApproxEqAbs(userBalance, 300 * 10**18, 1 * 10**16, "Should have ~300 tokens");
     }
 
     // ============ Edge Case: Wrong Committer ============
@@ -489,5 +518,112 @@ contract Q101AirdropVestingV32FinalTest is Test {
 
     function _configureNewVesting(Q101AirdropVesting newVesting) internal {
         // Already configured in deploy function
+    }
+
+    // ============ Staged Token Deposit Workflow Test ============
+
+    function testStagedTokenDepositWorkflow() public {
+        // Test complete workflow of staged token deposits
+        // Simulates: 36 months total, deposit in 3 stages (0, 12, 24 months)
+
+        // Deploy new vesting contract
+        Q101AirdropVesting vestingImpl2 = new Q101AirdropVesting(gelatoRelay);
+        bytes memory vestingInitData = abi.encodeWithSelector(
+            Q101AirdropVesting.initialize.selector,
+            address(token),
+            3,
+            255,
+            owner
+        );
+        ERC1967Proxy vestingProxy2 = new ERC1967Proxy(address(vestingImpl2), vestingInitData);
+        Q101AirdropVesting vesting2 = Q101AirdropVesting(address(vestingProxy2));
+
+        // Month 0: Transfer first batch (enough for first 12 months)
+        // Calculation: 10% immediate + 20% cliff (at month 6) + ~28% linear (6-12 months)
+        // For 1000 tokens: 100 + 200 + 280 = 580 tokens
+        vm.prank(owner);
+        token.transfer(address(vesting2), 580 * 10**18);
+
+        // Configure airdrop
+        uint64 vestingStartTime = uint64(block.timestamp);
+        vm.prank(owner);
+        vesting2.configureAirdrop(
+            vestingStartTime,
+            merkleRoot,
+            VESTING_DURATION,
+            CLIFF_DURATION,
+            IMMEDIATE_RATIO,
+            CLIFF_RATIO,
+            Q101AirdropVesting.VestingFrequency.PER_SECOND,
+            30 days,
+            100 * 10**18
+        );
+
+        // User reveals (creates vesting schedule)
+        bytes32 salt = keccak256(abi.encodePacked("SALT_STAGED", user1));
+        bytes32 commitHash = keccak256(abi.encode(VOUCHER_ID, user1, AMOUNT, salt));
+
+        vm.prank(user1);
+        vesting2.commit(commitHash);
+        vm.roll(block.number + 3);
+
+        bytes32[] memory proof = new bytes32[](0);
+        vm.prank(user1);
+        vesting2.reveal(VOUCHER_ID, AMOUNT, salt, proof);
+
+        // Month 0-6: User gets immediate 10% during reveal
+        uint256 balance0 = token.balanceOf(user1);
+        assertEq(balance0, 100 * 10**18, "Should have immediate release");
+
+        // Month 6: After cliff, user withdraws cliff amount (20%)
+        vm.warp(vestingStartTime + CLIFF_DURATION + 1);
+        vm.prank(user1);
+        vesting2.withdraw();
+
+        uint256 balance6 = token.balanceOf(user1);
+        // Use approx check to account for 1 second of linear vesting (CLIFF_DURATION + 1)
+        assertApproxEqAbs(balance6, 300 * 10**18, 1 * 10**16, "Should have ~300 tokens at month 6");
+
+        // Month 12: User withdraws some linear vesting
+        // Fast forward 6 more months (total 12 months from start)
+        vm.warp(vestingStartTime + CLIFF_DURATION + 6 * 30 days);
+
+        vm.prank(user1);
+        vesting2.withdraw();
+
+        uint256 balance12 = token.balanceOf(user1);
+        // Should have: 100 (immediate) + 200 (cliff) + ~140 (half of linear vesting)
+        // Linear base = 700, 6 months out of 30 months = 700 * 6/30 = 140
+        assertApproxEqAbs(balance12, 440 * 10**18, 1 * 10**18, "Should have ~440 tokens at month 12");
+
+        // Month 13: Admin deposits second batch (for months 13-24)
+        // Need: ~280 tokens for next 12 months of linear vesting
+        vm.prank(owner);
+        token.transfer(address(vesting2), 280 * 10**18);
+
+        // Month 18: User continues to withdraw
+        vm.warp(vestingStartTime + CLIFF_DURATION + 12 * 30 days); // Now at month 18
+        vm.prank(user1);
+        vesting2.withdraw();
+
+        uint256 balance18 = token.balanceOf(user1);
+        // Should have: previous + ~140 more (6 more months of linear)
+        assertApproxEqAbs(balance18, 580 * 10**18, 1 * 10**18, "Should have ~580 tokens at month 18");
+
+        // Month 24: Admin deposits final batch
+        vm.prank(owner);
+        token.transfer(address(vesting2), 300 * 10**18); // Rest of the tokens
+
+        // Month 36: User withdraws everything
+        vm.warp(vestingStartTime + CLIFF_DURATION + VESTING_DURATION + 1); // Now at month 36
+        vm.prank(user1);
+        vesting2.withdraw();
+
+        uint256 balanceFinal = token.balanceOf(user1);
+        assertEq(balanceFinal, AMOUNT, "Should have all 1000 tokens at end");
+
+        // Verify vesting schedule is fully claimed
+        (, , uint256 totalAmount, , uint256 releasedAmount, ) = vesting2.vestingSchedules(user1);
+        assertEq(releasedAmount, totalAmount, "All tokens should be released");
     }
 }
