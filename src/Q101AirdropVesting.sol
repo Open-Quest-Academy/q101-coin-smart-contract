@@ -57,12 +57,6 @@ contract Q101AirdropVesting is
         bool revealed;
     }
 
-    // ============ Immutable State (Constructor) ============
-
-    /// @notice Trusted forwarder for Gelato Relay (ERC2771)
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable state-variable-assignment
-    address private immutable _trustedForwarder;
-
     // ============ Basic State (Initialize - Cannot Change) ============
 
     /// @notice Q101 Token contract
@@ -160,7 +154,6 @@ contract Q101AirdropVesting is
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address trustedForwarder_) ERC2771ContextUpgradeable(trustedForwarder_) {
-        _trustedForwarder = trustedForwarder_;
         _disableInitializers();
     }
 
