@@ -477,19 +477,15 @@ test/
 
 ### Limitations
 
-1. **One-Time Merkle Root**: Cannot update Merkle root after initial setup
-   - Design: Prevents unauthorized changes
-   - Workaround: Deploy new vesting contract for new distributions
-
-2. **No Partial Reveals**: User must reveal entire voucher amount
+1. **No Partial Reveals**: User must reveal entire voucher amount
    - Design: Simplifies logic and prevents gaming
    - Impact: Cannot split claims across multiple transactions
 
-3. **Fixed Vesting Parameters**: Cannot change vesting config per user
+2**Fixed Vesting Parameters**: Cannot change vesting config per user
    - Design: Fairness and consistency
    - Workaround: Use separate vesting contracts for different tiers
 
-4. **ERC2771 Dependency**: Relies on Gelato's trusted forwarder
+3**ERC2771 Dependency**: Relies on Gelato's trusted forwarder
    - Mitigation: Functions work without Gelato (user pays gas)
    - Security: EIP-2771 is a standard with wide adoption
 
