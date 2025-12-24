@@ -468,7 +468,6 @@ contract Q101AirdropVesting is
         // 4. Check timing constraints
         uint256 blocksPassed = block.number - commitment.blockNumber;
         require(blocksPassed >= minRevealDelay, "Reveal: Too early");
-        require(blocksPassed <= maxRevealDelay, "Reveal: Too late");
 
         // 5. Check voucher not claimed yet and user has no existing vesting schedule
         require(!claimedVouchers[voucherId], "Reveal: Voucher already claimed");

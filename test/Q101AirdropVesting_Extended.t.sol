@@ -240,23 +240,8 @@ contract Q101AirdropVestingV32ExtendedTest is Test {
         vesting.reveal(VOUCHER_ID_1, AMOUNT_1, salt, proof);
     }
 
-    function testRevealRevertWhenTooLate() public {
-        bytes32 salt = keccak256("SALT_1");
-        bytes32 commitHash = keccak256(abi.encode(VOUCHER_ID_1, user1, AMOUNT_1, salt));
-
-        // Commit
-        vm.prank(user1);
-        vesting.commit(commitHash);
-
-        // Wait too long (> maxRevealDelay)
-        vm.roll(block.number + 300);
-
-        bytes32[] memory proof = _generateMerkleProof(VOUCHER_ID_1, AMOUNT_1);
-
-        vm.expectRevert("Reveal: Too late");
-        vm.prank(user1);
-        vesting.reveal(VOUCHER_ID_1, AMOUNT_1, salt, proof);
-    }
+    // testRevealRevertWhenTooLate() test removed as maxRevealDelay constraint was removed
+    // for security reasons (revealing too late would expose voucher ID without getting tokens)
 
     function testRevealRevertWhenVoucherAlreadyClaimed() public {
         bytes32 salt = keccak256("SALT_1");
