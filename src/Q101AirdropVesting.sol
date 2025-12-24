@@ -258,6 +258,34 @@ contract Q101AirdropVesting is
             "Immediate + Cliff ratio must <= 100%"
         );
 
+        // Vesting frequency and duration divisibility validation
+        // Ensure vesting duration and cliff duration are compatible with vesting frequency
+        // to prevent precision loss and ensure uniform token release
+        if (_vestingFrequency == VestingFrequency.PER_DAY) {
+            require(
+                _vestingDuration % 1 days == 0,
+                "Vesting duration must be multiple of 1 day for PER_DAY mode"
+            );
+            if (_cliffDuration > 0) {
+                require(
+                    _cliffDuration % 1 days == 0,
+                    "Cliff duration must be multiple of 1 day for PER_DAY mode"
+                );
+            }
+        } else if (_vestingFrequency == VestingFrequency.PER_MONTH) {
+            require(
+                _vestingDuration % 30 days == 0,
+                "Vesting duration must be multiple of 30 days for PER_MONTH mode"
+            );
+            if (_cliffDuration > 0) {
+                require(
+                    _cliffDuration % 30 days == 0,
+                    "Cliff duration must be multiple of 30 days for PER_MONTH mode"
+                );
+            }
+        }
+        // Note: PER_SECOND mode has no divisibility requirements (supports any duration)
+
         // ============ Set All Parameters Atomically ============
 
         startTime = _startTime;
