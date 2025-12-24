@@ -46,13 +46,10 @@ contract Q101Token is
         require(bytes(symbol_).length > 0, "Q101Token: Invalid token symbol");
 
         __ERC20_init(name_, symbol_);
-        __Ownable_init(msg.sender);
+        __Ownable_init(gnosisSafe);
         __Pausable_init();
 
         _mint(gnosisSafe, TOTAL_SUPPLY);
-
-        // Transfer ownership to Gnosis Safe
-        transferOwnership(gnosisSafe);
     }
 
     /**
