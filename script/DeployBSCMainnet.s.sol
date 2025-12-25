@@ -102,8 +102,8 @@ contract DeployBSCMainnet is Script {
             cliffReleaseRatio: 2000,                       // 20% at cliff end (2000 basis points)
             minWithdrawInterval: 30 days,                  // 30 days minimum withdrawal interval
             minWithdrawAmount: 100 * 10**18,               // 100 tokens minimum
-            minRevealDelay: 3,                             // 3 blocks (~9 seconds on BSC)
-            maxRevealDelay: 255,                           // 255 blocks (~12.75 minutes on BSC)
+            minRevealDelay: 3,                             // 3 blocks
+            maxRevealDelay: 31536000000,                           // 31536000000 blocks
             vestingFrequency: 0                            // PER_SECOND (most precise)
         });
 
@@ -128,7 +128,7 @@ contract DeployBSCMainnet is Script {
             minWithdrawInterval: 30 days,                  // 30 days minimum withdrawal interval
             minWithdrawAmount: 200 * 10**18,               // 200 tokens minimum
             minRevealDelay: 3,                             // 3 blocks
-            maxRevealDelay: 255,                           // 255 blocks
+            maxRevealDelay: 31536000000,                           // 31536000000 blocks
             vestingFrequency: 0                            // PER_SECOND (most precise)
         });
 

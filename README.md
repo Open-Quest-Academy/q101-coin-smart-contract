@@ -22,7 +22,7 @@ Sophisticated airdrop contract with three-stage vesting and commit-reveal patter
 #### Core Features:
 - **Commit-Reveal Mechanism**: Two-phase claiming to prevent front-running attacks
   - Phase 1: User commits with `keccak256(voucherId, user, amount, salt)`
-  - Phase 2: User reveals data after configurable block delay (default: 3-255 blocks)
+  - Phase 2: User reveals data after configurable block delay (default: 3-31536000000 blocks)
 - **Merkle Proof Verification**: Efficient eligibility verification using Merkle trees
 - **Three-Stage Release Model**:
   1. **Immediate Release**: Configurable percentage (e.g., 10%) released at claim time
