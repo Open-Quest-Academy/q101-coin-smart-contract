@@ -33,7 +33,6 @@ Sophisticated airdrop contract with three-stage vesting and commit-reveal patter
 - **UUPS Upgradeable**: Multi-sig controlled upgrades
 
 #### Security Highlights:
-- Merkle root can only be set once (immutable after initialization)
 - Commit-reveal prevents transaction front-running
 - Configurable reveal delay window prevents race conditions
 - Per-second precision in vesting calculations
@@ -147,7 +146,6 @@ bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(voucherId, amount))))
 **Security Properties**:
 - Efficient verification (O(log n) proofs for n allocations)
 - Prevents second pre-image attacks
-- Immutable root (can only be set once)
 - Per-voucher claim tracking prevents replays
 
 ### Three-Stage Vesting Calculation
@@ -183,7 +181,7 @@ Users can withdraw when **ANY** of these conditions are met:
 ### Access Control
 
 All critical operations protected by **Gnosis Safe multi-sig**:
-- Setting Merkle root (once only)
+- Setting Merkle root 
 - Configuring airdrop parameters
 - Updating withdrawal restrictions
 - Pausing/unpausing operations
@@ -262,7 +260,7 @@ forge script script/DeployBSCMainnet.s.sol:DeployBSCMainnet \
 
 All post-deployment steps must be executed via **Gnosis Safe** multi-sig:
 
-1. **Set Merkle Roots** (once only per contract):
+1. **Set Merkle Roots**:
    ```solidity
    // Function: updateMerkleRoot(bytes32 _merkleRoot)
    shareholderVesting.updateMerkleRoot(0x...);
@@ -469,7 +467,6 @@ test/
 
 3. **Merkle Root Accuracy**: Assumes correct off-chain Merkle tree generation
    - Mitigation: Thoroughly test tree generation before setting root
-   - Note: Root is immutable once set
 
 4. **Block Time Stability**: Assumes ~3 second block time on BSC
    - Reality: BSC block time is consistent at ~3 seconds
